@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=3.0">
+<title>Você é meu céu inteiro</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,300&display=swap');
+    * { touch-action: none; }
+  body {
+    margin: 0; height: 100vh; overflow: hidden;
+    background: radial-gradient(ellipse at bottom, #1B2735 0%, #090A0F 100%);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    font-family: sans-serif;
+  }
+  canvas { position: fixed; top:0; left:0; width:100%; height:100%; }
+  #starsCanvas { z-index: 1; }
+  #cloudsCanvas { z-index: 2; opacity: 0.6; }
+
+ .world {
+    position: relative; z-index: 3;
+    width: 100%; height: 100%;
+    display: flex; align-items: center; justify-content: center;
+    transition: transform 0.1s linear;
+    will-change: transform;
+  }
+
+ .moon-container {
+    position: relative; width: 220px; height: 220px;
+    animation: float 6s ease-in-out infinite;
+    box-shadow: 0 0 80px rgba(255, 244, 200, 0.3);
+    border-radius: 50%;
+  }
+ .moon {
+    width: 100%; height: 100%; border-radius: 50%;
+    background: #e9e0c7;
+    background-image:
+      radial-gradient(circle at 30% 30%, #f5f0dc 0%, #e9e0c7 25%, #d8ccab 50%, #c2b69b 100%),
+      radial-gradient(circle at 20% 25%, rgba(0,0,0,0.18) 0%, transparent 9%),
+      radial-gradient(circle at 65% 35%, rgba(0,0,0,0.15) 0%, transparent 13%),
+      radial-gradient(circle at 45% 70%, rgba(0,0,0,0.2) 0%, transparent 11%),
+      radial-gradient(circle at 80% 60%, rgba(0,0,0,0.12) 0%, transparent 8%);
+    box-shadow: inset -20px -15px 40px rgba(0,0,0,0.5), inset 10px 10px 30px rgba(255,255,255,0.5),
+                0 0 40px rgba(255,244,200,0.6), 0 0 120px rgba(255,244,200,0.15);
+    position: relative; overflow: hidden;
+  }
+ .moon::before {
+    content: ''; position: absolute; width: 100%; height: 100%; border-radius: 50%;
+    background: #090A0F; animation: phase 8s ease-in-out infinite alternate;
+  }
+  @keyframes phase {
+    0% { transform: translateX(-92%) scale(0.9); }
+    100% { transform: translateX(18%) scale(1.05); }
+  }
+  @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-12px)} }
+
+ .frase {
+    position: fixed; bottom: 8%; z-index: 10; width: 92%; max-width: 620px; text-align: center;
+    color: #e0d5c0; font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(17px, 4vw, 26px); font-style: italic; line-height: 1.5;
+    text-shadow: 0 0 15px rgba(0,0,0,0.8); pointer-events: none;
+  }
+ .hint {
+    position: fixed; top: 5%; z-index: 10; color: rgba(255,255,255,0.4);
+    font-size: 11px; letter-spacing: 3px; text-transform: uppercase; pointer-events: none;
+  }
+</style>
+</head>
+<body>
+
+<div class="hint">Arraste com o dedo para explorar • Pinça para zoom</div>
+<canvas id="starsCanvas"></canvas>
+<canvas id="cloudsCanvas"></canvas>
+
+<div class="world" id="world">
+  <div class="moon-container" id="moon">
+    <div class="moon"></div>
+  </div>
+</div>
+
+<p class="frase">Eu achava que a lua era linda, que as estrelas brilhavam e que o céu era infinito. Aí você chegou e eu entendi: eu só estava aprendendo a te enxergar em tudo.</p>
+
+<script>
+// --- 1. ESTRELAS REALISTAS ---
+const sCanvas = document.getElementById('starsCanvas');
+const sCtx = sCanvas.getContext('2d');
+function resizeAll(){
+  sCanvas.width = cCanvas.width = window.innerWidth;
+  sCanvas.height = cCanvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resizeAll);
+
+// estrelas
+let stars = [];
+for(let i=0;i<400;i++) stars.push({x:Math.random(), y:Math.random(), r:Math.random()*1.6, o:Math.random(), b:Math.random()*0.03+0.005});
+
+function drawStars(){
+  sCtx.clearRect(0,0,sCanvas.width,sCanvas.height);
+  stars.forEach(s=>{
+    s.o += (Math.random()-0.5)*s.b;
+    s.o = Math.max(0.1, Math.min(1, s.o));
+    sCtx.beginPath();
+    sCtx.arc(s.x*sCanvas.width, s.y*sCanvas.height, s.r, 0, Math.PI*2);
+    sCtx.fillStyle = `rgba(255,255,255,${s.o})`;
+    sCtx.shadowBlur = s.r>1.2?8:0; sCtx.shadowColor="white"; sCtx.fill();
+  });
+}
+
+// --- 2. NUVENS REALISTAS ---
+const cCanvas = document.getElementById('cloudsCanvas');
+const cCtx = cCanvas.getContext('2d');
+let clouds = [];
+for(let i=0;i<7;i++){
+  clouds.push({x:Math.random(), y:Math.random()*0.6, w:Math.random()*400+300, h:Math.random()*100+60, speed:Math.random()*0.0003+0.0001, alpha:Math.random()*0.15+0.08});
+}
+function drawClouds(){
+  cCtx.clearRect(0,0,cCanvas.width,cCanvas.height);
+  clouds.forEach(cl=>{
+    cl.x += cl.speed;
+    if(cl.x>1.3) cl.x = -0.5;
+    let gx = cl.x * cCanvas.width;
+    let gy = cl.y * cCanvas.height;
+    let grad = cCtx.createRadialGradient(gx,gy,0,gx,gy,cl.w/2);
+    grad.addColorStop(0, `rgba(200,210,230,${cl.alpha})`);
+    grad.addColorStop(1, `rgba(200,210,230,0)`);
+    cCtx.fillStyle = grad;
+    cCtx.beginPath();
+    cCtx.ellipse(gx,gy,cl.w/2,cl.h/2,0,0,Math.PI*2);
+    cCtx.fill();
+    // segunda bolha pra forma orgânica
+    cCtx.beginPath();
+    cCtx.ellipse(gx+cl.w*0.2,gy+10,cl.w*0.3,cl.h*0.6,0,0,Math.PI*2);
+    cCtx.fill();
+  });
+}
+
+function loop(){ drawStars(); drawClouds(); requestAnimationFrame(loop); }
+resizeAll(); loop();
+
+// --- 3. EXPLORAR COM OS DEDOS (DRAG + PINCH ZOOM) ---
+const world = document.getElementById('world');
+let scale = 1, lastScale = 1;
+let posX = 0, posY = 0, lastX = 0, lastY = 0;
+let isDragging = false, startX, startY;
+let lastDist = 0;
+
+world.addEventListener('touchstart', e=>{
+  if(e.touches.length==1){
+    isDragging=true;
+    startX = e.touches[0].clientX - lastX;
+    startY = e.touches[0].clientY - lastY;
+  } else if(e.touches.length==2){
+    lastDist = Math.hypot(e.touches[0].clientX-e.touches[1].clientX, e.touches[0].clientY-e.touches[1].clientY);
+  }
+});
+world.addEventListener('touchmove', e=>{
+  e.preventDefault();
+  if(e.touches.length==1 && isDragging){
+    lastX = e.touches[0].clientX - startX;
+    lastY = e.touches[0].clientY - startY;
+  } else if(e.touches.length==2){
+    let dist = Math.hypot(e.touches[0].clientX-e.touches[1].clientX, e.touches[0].clientY-e.touches[1].clientY);
+    scale = Math.min(Math.max(0.6, lastScale * (dist/lastDist)), 2.5);
+  }
+  world.style.transform = `translate(${lastX}px, ${lastY}px) scale(${scale})`;
+}, {passive:false});
+
+world.addEventListener('touchend', e=>{
+  if(e.touches.length==0){ isDragging=false; lastScale=scale; }
+  if(e.touches.length==1){
+    startX = e.touches[0].clientX - lastX;
+    startY = e.touches[0].clientY - lastY;
+  }
+});
+
+// mouse também pra testar no PC
+let mDown=false, mStartX, mStartY;
+world.addEventListener('mousedown', e=>{ mDown=true; mStartX=e.clientX-lastX; mStartY=e.clientY-lastY; });
+window.addEventListener('mousemove', e=>{
+  if(!mDown) return;
+  lastX=e.clientX-mStartX; lastY=e.clientY-mStartY;
+  world.style.transform = `translate(${lastX}px, ${lastY}px) scale(${scale})`;
+});
+window.addEventListener('mouseup', ()=> mDown=false);
+world.addEventListener('wheel', e=>{
+  scale = Math.min(Math.max(0.6, scale - e.deltaY*0.001), 2.5);
+  world.style.transform = `translate(${lastX}px, ${lastY}px) scale(${scale})`;
+  lastScale=scale;
+});
+</script>
+</body>
+</html>
